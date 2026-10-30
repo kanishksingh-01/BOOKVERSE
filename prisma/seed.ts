@@ -1,0 +1,997 @@
+import { PrismaClient, Role, DiscountType } from "@prisma/client";
+import bcrypt from "bcryptjs";
+
+const prisma = new PrismaClient();
+
+async function main() {
+  console.log("🌱 Starting BookVerse database seeding...");
+
+  // 1. Clean existing records in reverse dependency order
+  await prisma.couponUsage.deleteMany();
+  await prisma.coupon.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.orderItem.deleteMany();
+  await prisma.order.deleteMany();
+  await prisma.review.deleteMany();
+  await prisma.wishlistItem.deleteMany();
+  await prisma.wishlist.deleteMany();
+  await prisma.cartItem.deleteMany();
+  await prisma.cart.deleteMany();
+  await prisma.book.deleteMany();
+  await prisma.category.deleteMany();
+  await prisma.address.deleteMany();
+  await prisma.session.deleteMany();
+  await prisma.account.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.newsletterSubscriber.deleteMany();
+
+  console.log("Cleared existing data.");
+
+  // 2. Seed Users (Admin and Customers)
+  const adminPasswordHash = await bcrypt.hash("Admin@BookVerse2026!", 10);
+  const customerPasswordHash = await bcrypt.hash("Customer@2026!", 10);
+
+  const admin = await prisma.user.create({
+    data: {
+      name: "Devendra Verma (Admin)",
+      email: "admin@bookverse.in",
+      passwordHash: adminPasswordHash,
+      role: Role.ADMIN,
+      phone: "+91 9876543210",
+      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80",
+    },
+  });
+
+  const customer1 = await prisma.user.create({
+    data: {
+      name: "Aarav Sharma",
+      email: "aarav.sharma@example.in",
+      passwordHash: customerPasswordHash,
+      role: Role.CUSTOMER,
+      phone: "+91 9820112233",
+      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+      addresses: {
+        create: {
+          fullName: "Aarav Sharma",
+          phone: "+91 9820112233",
+          street: "Flat 402, Lotus Residency, 14th Main, Indiranagar",
+          landmark: "Near BDA Complex",
+          city: "Bengaluru",
+          state: "Karnataka",
+          postalCode: "560038",
+          country: "India",
+          isDefault: true,
+        },
+      },
+    },
+  });
+
+  const customer2 = await prisma.user.create({
+    data: {
+      name: "Priya Patel",
+      email: "priya.patel@example.in",
+      passwordHash: customerPasswordHash,
+      role: Role.CUSTOMER,
+      phone: "+91 9811224455",
+      avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80",
+      addresses: {
+        create: {
+          fullName: "Priya Patel",
+          phone: "+91 9811224455",
+          street: "A-204, Riverview Apts, Alkapuri",
+          landmark: "Opposite Grand Mall",
+          city: "Vadodara",
+          state: "Gujarat",
+          postalCode: "390007",
+          country: "India",
+          isDefault: true,
+        },
+      },
+    },
+  });
+
+  console.log("Seeded users & addresses.");
+
+  // 3. Seed Categories
+  const categoriesData = [
+    {
+      name: "Fiction",
+      slug: "fiction",
+      description: "Literary masterpieces, contemporary narratives, and timeless classics that transport your soul.",
+      image: "https://images.unsplash.com/photo-1474932430478-367dbb6832c1?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 1,
+    },
+    {
+      name: "Mystery & Thriller",
+      slug: "mystery-thriller",
+      description: "Edge-of-your-seat whodunits, psychological mysteries, and investigative crime tales.",
+      image: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 2,
+    },
+    {
+      name: "Romance",
+      slug: "romance",
+      description: "Tender love stories, poetic yearnings, and heartwarming contemporary romance.",
+      image: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 3,
+    },
+    {
+      name: "Fantasy",
+      slug: "fantasy",
+      description: "Mythological sagas, epic kingdoms, magic systems, and legendary quests.",
+      image: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 4,
+    },
+    {
+      name: "Science Fiction",
+      slug: "science-fiction",
+      description: "Interplanetary expeditions, speculative futures, artificial intelligence, and dystopian realities.",
+      image: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 5,
+    },
+    {
+      name: "Self-Help",
+      slug: "self-help",
+      description: "Mindfulness, habit architecture, resilience, and personal transformation.",
+      image: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 6,
+    },
+    {
+      name: "Business & Economics",
+      slug: "business",
+      description: "Entrepreneurship, financial independence, behavioral economics, and leadership frameworks.",
+      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 7,
+    },
+    {
+      name: "Technology & Programming",
+      slug: "technology",
+      description: "Software engineering, computer science fundamentals, system design, and AI advancements.",
+      image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 8,
+    },
+    {
+      name: "Psychology",
+      slug: "psychology",
+      description: "Cognitive science, human behavior, emotional depth, and neuroscientific discovery.",
+      image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 9,
+    },
+    {
+      name: "History & Biography",
+      slug: "history-biography",
+      description: "Profound life stories, civilizational chronicles, independence movements, and historical retrospectives.",
+      image: "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 10,
+    },
+    {
+      name: "Children",
+      slug: "children",
+      description: "Whimsical picture books, moral adventures, bedtime folklore, and joyful early reads.",
+      image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop&q=80",
+      sortOrder: 11,
+    },
+  ];
+
+  const categoryMap: Record<string, string> = {};
+
+  for (const cat of categoriesData) {
+    const created = await prisma.category.create({
+      data: cat,
+    });
+    categoryMap[cat.slug] = created.id;
+  }
+
+  console.log("Seeded categories.");
+
+  // 4. Seed Books (32 realistic titles across categories with INR prices in paise)
+  const booksData = [
+    // FICTION
+    {
+      title: "The God of Small Things",
+      slug: "the-god-of-small-things",
+      author: "Arundhati Roy",
+      publisher: "IndiaInk / Penguin India",
+      isbn: "978-0679457312",
+      description: "The Booker Prize-winning modern classic recounting the tragic childhood memories of fraternal twins Rahel and Estha in Ayemenem, Kerala, unraveling caste, forbidden love, and familial decay.",
+      originalPrice: 49900,
+      sellingPrice: 38900,
+      stock: 24,
+      pages: 340,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "fiction",
+    },
+    {
+      title: "Midnight's Children",
+      slug: "midnights-children",
+      author: "Salman Rushdie",
+      publisher: "Vintage Books",
+      isbn: "978-0812976533",
+      description: "Winner of the 'Best of the Booker', Saleem Sinai is born at the exact stroke of midnight as India achieves independence, telepathically linked with 1,000 other extraordinary midnight children.",
+      originalPrice: 59900,
+      sellingPrice: 44900,
+      stock: 18,
+      pages: 647,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "fiction",
+    },
+    {
+      title: "The Palace of Illusions",
+      slug: "the-palace-of-illusions",
+      author: "Chitra Banerjee Divakaruni",
+      publisher: "Picador India",
+      isbn: "978-1400096206",
+      description: "A reimagining of the world-famous Indian epic, the Mahabharata—told from the spirited and deeply observant perspective of Panchaali, the fiery princess born of fire.",
+      originalPrice: 45000,
+      sellingPrice: 34900,
+      stock: 35,
+      pages: 360,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "fiction",
+    },
+    {
+      title: "Malgudi Days",
+      slug: "malgudi-days",
+      author: "R.K. Narayan",
+      publisher: "Indian Thought Publications",
+      isbn: "978-8185986173",
+      description: "A quintessential collection of thirty-two timeless short stories portraying life in the enchanting fictional South Indian town of Malgudi with warm humor and gentle irony.",
+      originalPrice: 35000,
+      sellingPrice: 28000,
+      stock: 40,
+      pages: 268,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "fiction",
+    },
+
+    // MYSTERY & THRILLER
+    {
+      title: "The Tokyo Zodiac Murders",
+      slug: "the-tokyo-zodiac-murders",
+      author: "Soji Shimada",
+      publisher: "Pushkin Vertigo",
+      isbn: "978-1782271383",
+      description: "A legendary locked-room puzzle mystery that baffled Japan for over forty years, pitting eccentric detective Kiyoshi Mitarai against an astrolocal master killer.",
+      originalPrice: 49900,
+      sellingPrice: 39900,
+      stock: 12,
+      pages: 336,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "mystery-thriller",
+    },
+    {
+      title: "The Devotion of Suspect X",
+      slug: "the-devotion-of-suspect-x",
+      author: "Keigo Higashino",
+      publisher: "Minotaur Books",
+      isbn: "978-1250002693",
+      description: "A genial mathematics schoolteacher crafts an impervious alibi for his neighbor after an accidental crime, clashing in an exhilarating battle of wits with a brilliant physics professor.",
+      originalPrice: 49900,
+      sellingPrice: 37500,
+      stock: 22,
+      pages: 304,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1476275466078-4007374efbbe?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "mystery-thriller",
+    },
+    {
+      title: "And Then There Were None",
+      slug: "and-then-there-were-none",
+      author: "Agatha Christie",
+      publisher: "HarperCollins",
+      isbn: "978-0062073488",
+      description: "Ten strangers are lured to an isolated island mansion off the Devon coast by an enigmatic host, only to be executed one by one according to an ominous nursery rhyme.",
+      originalPrice: 39900,
+      sellingPrice: 29900,
+      stock: 30,
+      pages: 272,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1589829085413-56de8ae18c73?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "mystery-thriller",
+    },
+
+    // ROMANCE
+    {
+      title: "The Namesake",
+      slug: "the-namesake",
+      author: "Jhumpa Lahiri",
+      publisher: "Mariner Books",
+      isbn: "978-0618485222",
+      description: "A tender, resonant story of the Ganguli family crossing from Calcutta to Cambridge, Massachusetts, exploring the burden of identity, immigrant dislocation, and delicate domestic love.",
+      originalPrice: 45000,
+      sellingPrice: 35000,
+      stock: 19,
+      pages: 291,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "romance",
+    },
+    {
+      title: "A Suitable Boy",
+      slug: "a-suitable-boy",
+      author: "Vikram Seth",
+      publisher: "Phoenix",
+      isbn: "978-1780227894",
+      description: "Set in post-independence, post-partition India, this epic panoramic novel follows young Lata Mehra and her mother’s quest to arrange a match among three very different suitors.",
+      originalPrice: 129900,
+      sellingPrice: 99900,
+      stock: 15,
+      pages: 1349,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "romance",
+    },
+
+    // FANTASY
+    {
+      title: "The Immortals of Meluha",
+      slug: "the-immortals-of-meluha",
+      author: "Amish Tripathi",
+      publisher: "Westland Books",
+      isbn: "978-9380658742",
+      description: "1900 BC in the ancient valley of the Indus. The proud Suryavanshi empire faces mortal threat until an unpretentious Tibetan immigrant Shiva arrives, bearing the fabled blue throat of destiny.",
+      originalPrice: 39900,
+      sellingPrice: 28500,
+      stock: 45,
+      pages: 390,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "fantasy",
+    },
+    {
+      title: "The Name of the Wind",
+      slug: "the-name-of-the-wind",
+      author: "Patrick Rothfuss",
+      publisher: "DAW Books",
+      isbn: "978-0756404741",
+      description: "The tale of Kvothe—from his childhood in a troupe of traveling players to his years as a near-feral orphan in a crime-riddled city, to his brazen entrance into a legendary school of magic.",
+      originalPrice: 69900,
+      sellingPrice: 54900,
+      stock: 14,
+      pages: 662,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1463320726281-696a485928c7?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "fantasy",
+    },
+
+    // SCIENCE FICTION
+    {
+      title: "Dune",
+      slug: "dune",
+      author: "Frank Herbert",
+      publisher: "Ace Books",
+      isbn: "978-0441172719",
+      description: "Set on the desert planet Arrakis, Dune tells the story of Paul Atreides as his noble family inherits stewardship of the only planetary source of the universe’s most vital substance: Melange.",
+      originalPrice: 65000,
+      sellingPrice: 49900,
+      stock: 28,
+      pages: 688,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "science-fiction",
+    },
+    {
+      title: "Project Hail Mary",
+      slug: "project-hail-mary",
+      author: "Andy Weir",
+      publisher: "Ballantine Books",
+      isbn: "978-0593135204",
+      description: "Ryland Grace is the sole survivor on a desperate, last-chance space mission—and if he fails, humanity and the earth itself will perish in a solar extinction crisis.",
+      originalPrice: 59900,
+      sellingPrice: 44900,
+      stock: 20,
+      pages: 496,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "science-fiction",
+    },
+
+    // SELF-HELP
+    {
+      title: "Atomic Habits",
+      slug: "atomic-habits",
+      author: "James Clear",
+      publisher: "Random House Business",
+      isbn: "978-1847941831",
+      description: "An immensely practical guide showing how tiny changes can lead to remarkable results. Master the Four Laws of Behavior Change to sculpt the systems that govern your life.",
+      originalPrice: 69900,
+      sellingPrice: 52000,
+      stock: 65,
+      pages: 320,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "self-help",
+    },
+    {
+      title: "The Psychology of Money",
+      slug: "the-psychology-of-money",
+      author: "Morgan Housel",
+      publisher: "Jaico Publishing House",
+      isbn: "978-9390166268",
+      description: "Timeless lessons on wealth, greed, and happiness. Doing well with money isn’t necessarily about what you know—it’s about how you behave in unpredictable market cycles.",
+      originalPrice: 49900,
+      sellingPrice: 34900,
+      stock: 50,
+      pages: 252,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1553729459-efe14ef6055d?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "self-help",
+    },
+    {
+      title: "Deep Work",
+      slug: "deep-work",
+      author: "Cal Newport",
+      publisher: "Grand Central Publishing",
+      isbn: "978-1455586691",
+      description: "Rules for focused success in a distracted world. Deep work is the ability to focus without distraction on a cognitively demanding task—a rare superpower in the modern age.",
+      originalPrice: 49900,
+      sellingPrice: 38900,
+      stock: 32,
+      pages: 304,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1457369804613-52c61a468e7d?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "self-help",
+    },
+
+    // BUSINESS & ECONOMICS
+    {
+      title: "Zero to One",
+      slug: "zero-to-one",
+      author: "Peter Thiel & Blake Masters",
+      publisher: "Crown Business",
+      isbn: "978-0804139298",
+      description: "Notes on startups, or how to build the future. The great secret of our time is that there are still uncharted frontiers to explore and new inventions to create from first principles.",
+      originalPrice: 59900,
+      sellingPrice: 42900,
+      stock: 25,
+      pages: 224,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "business",
+    },
+    {
+      title: "Shoe Dog: A Memoir by the Creator of Nike",
+      slug: "shoe-dog",
+      author: "Phil Knight",
+      publisher: "Scribner",
+      isbn: "978-1501135910",
+      description: "An authentic, refreshingly honest narrative detailing Phil Knight's messy, perilous journey from borrowing fifty dollars from his father to founding Nike.",
+      originalPrice: 59900,
+      sellingPrice: 45000,
+      stock: 30,
+      pages: 400,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "business",
+    },
+
+    // TECHNOLOGY & PROGRAMMING
+    {
+      title: "Designing Data-Intensive Applications",
+      slug: "designing-data-intensive-applications",
+      author: "Martin Kleppmann",
+      publisher: "O'Reilly Media",
+      isbn: "978-1449373320",
+      description: "The definitive guide to distributed systems, storage engines, stream processing, consensus, and fault-tolerant architecture for modern software engineering.",
+      originalPrice: 220000,
+      sellingPrice: 179900,
+      stock: 16,
+      pages: 616,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "technology",
+    },
+    {
+      title: "Clean Code: A Handbook of Agile Software Craftsmanship",
+      slug: "clean-code",
+      author: "Robert C. Martin",
+      publisher: "Prentice Hall",
+      isbn: "978-0132350884",
+      description: "Even bad code can function. But if code isn’t clean, it can bring a development organization to its knees. Master naming, functions, formatting, and unit tests.",
+      originalPrice: 159900,
+      sellingPrice: 124900,
+      stock: 20,
+      pages: 464,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "technology",
+    },
+    {
+      title: "The Pragmatic Programmer",
+      slug: "the-pragmatic-programmer",
+      author: "David Thomas & Andrew Hunt",
+      publisher: "Addison-Wesley Professional",
+      isbn: "978-0135957059",
+      description: "20th Anniversary Edition. Pragmatic programming cuts through the churn of changing technologies, instilling foundational wisdom on code craftsmanship and career vitality.",
+      originalPrice: 189900,
+      sellingPrice: 145000,
+      stock: 15,
+      pages: 352,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "technology",
+    },
+
+    // PSYCHOLOGY
+    {
+      title: "Thinking, Fast and Slow",
+      slug: "thinking-fast-and-slow",
+      author: "Daniel Kahneman",
+      publisher: "Farrar, Straus and Giroux",
+      isbn: "978-0374533557",
+      description: "Nobel laureate Daniel Kahneman takes us on a groundbreaking tour of the mind, examining the two systems that drive the way we think: intuitive System 1 and deliberative System 2.",
+      originalPrice: 65000,
+      sellingPrice: 47500,
+      stock: 28,
+      pages: 512,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "psychology",
+    },
+    {
+      title: "Man's Search for Meaning",
+      slug: "mans-search-for-meaning",
+      author: "Viktor E. Frankl",
+      publisher: "Beacon Press",
+      isbn: "978-0807014295",
+      description: "Psychiatrist Viktor Frankl's memoir of surviving Nazi concentration camps, developing Logotherapy: the psychological conviction that man's primary motivational force is finding meaning.",
+      originalPrice: 39900,
+      sellingPrice: 28900,
+      stock: 35,
+      pages: 192,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "psychology",
+    },
+
+    // HISTORY & BIOGRAPHY
+    {
+      title: "India After Gandhi: The History of the World's Largest Democracy",
+      slug: "india-after-gandhi",
+      author: "Ramachandra Guha",
+      publisher: "HarperCollins India",
+      isbn: "978-0330505543",
+      description: "A magisterial history of independent India covering riots, wars, caste struggles, language movements, and the enduring resilience of the world’s most heterogeneous democracy.",
+      originalPrice: 99900,
+      sellingPrice: 79900,
+      stock: 18,
+      pages: 960,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1461360370896-922624d12aa1?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "history-biography",
+    },
+    {
+      title: "Sapiens: A Brief History of Humankind",
+      slug: "sapiens",
+      author: "Yuval Noah Harari",
+      publisher: "Vintage",
+      isbn: "978-0099590088",
+      description: "100,000 years ago, at least six human species inhabited the earth. Today there is just one: us. How did Homo sapiens conquer the globe through the Cognitive, Agricultural, and Scientific revolutions?",
+      originalPrice: 69900,
+      sellingPrice: 52900,
+      stock: 55,
+      pages: 498,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1491841550275-ad7854e35ca6?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "history-biography",
+    },
+    {
+      title: "Wings of Fire: An Autobiography",
+      slug: "wings-of-fire",
+      author: "A.P.J. Abdul Kalam & Arun Tiwari",
+      publisher: "Universities Press",
+      isbn: "978-8173711466",
+      description: "The inspirational odyssey of Dr. APJ Abdul Kalam, from his humble boyhood in the coastal town of Rameswaram to leading India's space program and missile defense programs.",
+      originalPrice: 37500,
+      sellingPrice: 27500,
+      stock: 40,
+      pages: 180,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1519791883288-dc8bd696e667?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "history-biography",
+    },
+    {
+      title: "The Anarchy: The Relentless Rise of the East India Company",
+      slug: "the-anarchy",
+      author: "William Dalrymple",
+      publisher: "Bloomsbury Publishing",
+      isbn: "978-1408864371",
+      description: "How a militarized, corporate joint-stock entity founded in a small London office systematically subjugated the Mughal empire and ruled over hundreds of millions of people.",
+      originalPrice: 89900,
+      sellingPrice: 69900,
+      stock: 22,
+      pages: 576,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "history-biography",
+    },
+
+    // CHILDREN
+    {
+      title: "The Blue Umbrella",
+      slug: "the-blue-umbrella",
+      author: "Ruskin Bond",
+      publisher: "Rupa Publications",
+      isbn: "978-8171673407",
+      description: "A tender, lyrical Garhwal Himalayan fable about Binya, a young village girl whose beloved, sky-blue silk umbrella becomes the envy of the small mountain village.",
+      originalPrice: 19500,
+      sellingPrice: 15000,
+      stock: 50,
+      pages: 64,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "children",
+    },
+    {
+      title: "Swami and Friends",
+      slug: "swami-and-friends",
+      author: "R.K. Narayan",
+      publisher: "Indian Thought Publications",
+      isbn: "978-8185986005",
+      description: "The misadventures of ten-year-old schoolboy Swaminathan and his cricket-loving friends in British-ruled South India, full of childhood innocence and gentle rebellion.",
+      originalPrice: 25000,
+      sellingPrice: 19900,
+      stock: 35,
+      pages: 190,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: false,
+      staffPick: true,
+      categorySlug: "children",
+    },
+    {
+      title: "Grandma's Bag of Stories",
+      slug: "grandmas-bag-of-stories",
+      author: "Sudha Murty",
+      publisher: "Puffin Books",
+      isbn: "978-0143333623",
+      description: "When the children arrive at Ajji and Ajja’s house in Shiggaon, they are treated to wonderful feasts, magical escapades, and moral tales told under starlit skies.",
+      originalPrice: 29900,
+      sellingPrice: 22000,
+      stock: 45,
+      pages: 176,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1516979187457-637abb4f9353?w=600&auto=format&fit=crop&q=80",
+      featured: true,
+      bestseller: true,
+      staffPick: false,
+      categorySlug: "children",
+    },
+    {
+      title: "The Little Prince",
+      slug: "the-little-prince",
+      author: "Antoine de Saint-Exupéry",
+      publisher: "Reynal & Hitchcock",
+      isbn: "978-0156012195",
+      description: "An aviator stranded in the desert meets an extraordinary young boy from a distant asteroid who shares profound wisdom about roses, foxes, and what is truly invisible to the eye.",
+      originalPrice: 35000,
+      sellingPrice: 24900,
+      stock: 38,
+      pages: 96,
+      language: "English",
+      coverImage: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&auto=format&fit=crop&q=80",
+      featured: false,
+      bestseller: true,
+      staffPick: true,
+      categorySlug: "children",
+    },
+  ];
+
+  const seededBooks = [];
+  for (const book of booksData) {
+    const categoryId = categoryMap[book.categorySlug];
+    if (!categoryId) {
+      console.warn(`Category not found for slug: ${book.categorySlug}`);
+      continue;
+    }
+
+    const { categorySlug, ...data } = book;
+    const created = await prisma.book.create({
+      data: {
+        ...data,
+        categoryId,
+      },
+    });
+    seededBooks.push(created);
+  }
+
+  console.log(`Seeded ${seededBooks.length} realistic books.`);
+
+  // 5. Seed Coupons
+  const couponsData = [
+    {
+      code: "FIRSTBOOK",
+      description: "Get 15% off up to ₹150 on your first purchase above ₹499",
+      discountType: DiscountType.PERCENTAGE,
+      discountValue: 15,
+      minOrderAmount: 49900, // ₹499
+      maxDiscountAmount: 15000, // ₹150
+      maxUses: 500,
+      validFrom: new Date(),
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    },
+    {
+      code: "BOOKVERSE10",
+      description: "Flat 10% off on all book orders above ₹699",
+      discountType: DiscountType.PERCENTAGE,
+      discountValue: 10,
+      minOrderAmount: 69900, // ₹699
+      maxDiscountAmount: 25000, // ₹250
+      maxUses: 1000,
+      validFrom: new Date(),
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    },
+    {
+      code: "READMORE",
+      description: "Flat ₹100 off on cart value above ₹899",
+      discountType: DiscountType.FIXED,
+      discountValue: 10000, // ₹100 in paise
+      minOrderAmount: 89900, // ₹899
+      maxDiscountAmount: null,
+      maxUses: 300,
+      validFrom: new Date(),
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      isActive: true,
+    },
+  ];
+
+  for (const c of couponsData) {
+    await prisma.coupon.create({ data: c });
+  }
+
+  console.log("Seeded coupons.");
+
+  // 6. Seed Realistic Verified Reviews
+  if (seededBooks.length >= 4) {
+    await prisma.review.create({
+      data: {
+        bookId: seededBooks[0].id, // The God of Small Things
+        userId: customer1.id,
+        rating: 5,
+        title: "A lyrical triumph that stays with you forever",
+        comment: "Arundhati Roy's prose has an almost musical cadence. The sensory descriptions of monsoon rains in Kerala and the quiet tragedy of the family are unforgettable. Truly a masterpiece.",
+        verifiedPurchase: true,
+        isApproved: true,
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookId: seededBooks[13].id, // Atomic Habits
+        userId: customer2.id,
+        rating: 5,
+        title: "Clear, actionable and paradigm-shifting",
+        comment: "This is hands-down the most practical book on personal habit formation I have read. The concept of habit stacking and identity-based habits made a noticeable difference in my daily routine.",
+        verifiedPurchase: true,
+        isApproved: true,
+      },
+    });
+
+    await prisma.review.create({
+      data: {
+        bookId: seededBooks[18].id, // Designing Data-Intensive Applications
+        userId: customer1.id,
+        rating: 5,
+        title: "The gold standard for distributed backend engineering",
+        comment: "Martin Kleppmann explains replication, partitioning, transactions, and consensus with supreme clarity. If you work with databases and scale, this book is essential reading.",
+        verifiedPurchase: true,
+        isApproved: true,
+      },
+    });
+  }
+
+  // 7. Seed Sample Orders for Admin Testing & Order History
+  if (seededBooks.length >= 3) {
+    const order1 = await prisma.order.create({
+      data: {
+        orderNumber: "BV-2026-1001",
+        userId: customer1.id,
+        customerName: "Aarav Sharma",
+        customerEmail: "aarav.sharma@example.in",
+        customerPhone: "+91 9820112233",
+        shippingAddressJson: JSON.stringify({
+          fullName: "Aarav Sharma",
+          phone: "+91 9820112233",
+          street: "Flat 402, Lotus Residency, 14th Main, Indiranagar",
+          landmark: "Near BDA Complex",
+          city: "Bengaluru",
+          state: "Karnataka",
+          postalCode: "560038",
+          country: "India",
+        }),
+        subtotal: 90900,
+        discount: 10000,
+        shippingFee: 0,
+        total: 80900,
+        status: "DELIVERED",
+        paymentStatus: "PAID",
+        paymentMethod: "RAZORPAY",
+        razorpayOrderId: "order_Kj98x1YzpQW2",
+        razorpayPaymentId: "pay_Kj98x78UioPL",
+        items: {
+          create: [
+            {
+              bookId: seededBooks[0].id,
+              title: seededBooks[0].title,
+              author: seededBooks[0].author,
+              coverImage: seededBooks[0].coverImage,
+              price: seededBooks[0].sellingPrice,
+              quantity: 1,
+            },
+            {
+              bookId: seededBooks[13].id,
+              title: seededBooks[13].title,
+              author: seededBooks[13].author,
+              coverImage: seededBooks[13].coverImage,
+              price: seededBooks[13].sellingPrice,
+              quantity: 1,
+            },
+          ],
+        },
+        payment: {
+          create: {
+            provider: "RAZORPAY",
+            transactionId: "pay_Kj98x78UioPL",
+            amount: 80900,
+            currency: "INR",
+            status: "PAID",
+          },
+        },
+      },
+    });
+
+    await prisma.order.create({
+      data: {
+        orderNumber: "BV-2026-1002",
+        userId: customer2.id,
+        customerName: "Priya Patel",
+        customerEmail: "priya.patel@example.in",
+        customerPhone: "+91 9811224455",
+        shippingAddressJson: JSON.stringify({
+          fullName: "Priya Patel",
+          phone: "+91 9811224455",
+          street: "A-204, Riverview Apts, Alkapuri",
+          landmark: "Opposite Grand Mall",
+          city: "Vadodara",
+          state: "Gujarat",
+          postalCode: "390007",
+          country: "India",
+        }),
+        subtotal: 179900,
+        discount: 15000,
+        shippingFee: 0,
+        total: 164900,
+        status: "PROCESSING",
+        paymentStatus: "PAID",
+        paymentMethod: "RAZORPAY",
+        razorpayOrderId: "order_M23op9Lk1Zbc",
+        razorpayPaymentId: "pay_M23op98711Aa",
+        items: {
+          create: [
+            {
+              bookId: seededBooks[18].id,
+              title: seededBooks[18].title,
+              author: seededBooks[18].author,
+              coverImage: seededBooks[18].coverImage,
+              price: seededBooks[18].sellingPrice,
+              quantity: 1,
+            },
+          ],
+        },
+        payment: {
+          create: {
+            provider: "RAZORPAY",
+            transactionId: "pay_M23op98711Aa",
+            amount: 164900,
+            currency: "INR",
+            status: "PAID",
+          },
+        },
+      },
+    });
+  }
+
+  console.log("Seeded sample orders & payments.");
+  console.log("✅ BookVerse database seeded successfully!");
+}
+
+main()
+  .catch((e) => {
+    console.error("❌ Seeding error:", e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
