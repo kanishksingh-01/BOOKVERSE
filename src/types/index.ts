@@ -30,6 +30,7 @@ export interface Category {
   slug: string;
   description: string;
   image?: string | null;
+  sortOrder?: number;
   bookCount?: number;
 }
 

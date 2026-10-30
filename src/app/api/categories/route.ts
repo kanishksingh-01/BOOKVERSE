@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
 import { requireAdmin } from "@/lib/auth/guard";
 import { slugify } from "@/lib/utils";
+import { FALLBACK_CATEGORIES } from "@/lib/constants/fallback-data";
 
 export const dynamic = "force-dynamic";
 
@@ -16,20 +17,24 @@ export async function GET() {
       },
     });
 
-    const formatted = categories.map((cat) => ({
-      id: cat.id,
-      name: cat.name,
-      slug: cat.slug,
-      description: cat.description,
-      image: cat.image,
-      sortOrder: cat.sortOrder,
-      bookCount: cat._count.books,
-    }));
+    if (categories && categories.length > 0) {
+      const formatted = categories.map((cat) => ({
+        id: cat.id,
+        name: cat.name,
+        slug: cat.slug,
+        description: cat.description,
+        image: cat.image,
+        sortOrder: cat.sortOrder,
+        bookCount: cat._count.books,
+      }));
 
-    return NextResponse.json({ categories: formatted });
+      return NextResponse.json({ categories: formatted });
+    }
+
+    return NextResponse.json({ categories: FALLBACK_CATEGORIES });
   } catch (error) {
-    console.error("Fetch categories error:", error);
-    return NextResponse.json({ error: "Failed to fetch categories" }, { status: 500 });
+    console.warn("Fetch categories notice (using resilient fallback):", error);
+    return NextResponse.json({ categories: FALLBACK_CATEGORIES });
   }
 }
 

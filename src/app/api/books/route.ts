@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/auth/guard";
 import { slugify } from "@/lib/utils";
+import { FALLBACK_BOOKS } from "@/lib/constants/fallback-data";
 
 export const dynamic = "force-dynamic";
 
@@ -113,8 +114,54 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Fetch books error:", error);
-    return NextResponse.json({ error: "Failed to fetch books" }, { status: 500 });
+    console.warn("Fetch books notice (using resilient fallback):", error);
+
+    const { searchParams } = new URL(req.url);
+    const search = searchParams.get("search")?.toLowerCase().trim() || "";
+    const category = searchParams.get("category")?.trim() || "";
+    const minPrice = searchParams.get("minPrice") ? parseInt(searchParams.get("minPrice")!, 10) : undefined;
+    const maxPrice = searchParams.get("maxPrice") ? parseInt(searchParams.get("maxPrice")!, 10) : undefined;
+    const inStock = searchParams.get("inStock") === "true";
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "12", 10)));
+
+    let filtered = [...FALLBACK_BOOKS];
+
+    if (search) {
+      filtered = filtered.filter(
+        (b) =>
+          b.title.toLowerCase().includes(search) ||
+          b.author.toLowerCase().includes(search) ||
+          b.isbn.toLowerCase().includes(search)
+      );
+    }
+
+    if (category && category !== "all") {
+      filtered = filtered.filter((b) => b.category?.slug === category);
+    }
+
+    if (minPrice !== undefined) {
+      filtered = filtered.filter((b) => b.sellingPrice >= minPrice);
+    }
+    if (maxPrice !== undefined) {
+      filtered = filtered.filter((b) => b.sellingPrice <= maxPrice);
+    }
+    if (inStock) {
+      filtered = filtered.filter((b) => b.stock > 0);
+    }
+
+    const total = filtered.length;
+    const paginated = filtered.slice((page - 1) * limit, page * limit);
+
+    return NextResponse.json({
+      books: paginated,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   }
 }
 

@@ -3,6 +3,7 @@ import prisma from "@/lib/db/prisma";
 import { notFound } from "next/navigation";
 import BookDetailClient from "./BookDetailClient";
 import { Book, Review } from "@/types";
+import { FALLBACK_BOOKS } from "@/lib/constants/fallback-data";
 
 export const dynamic = "force-dynamic";
 
@@ -13,54 +14,92 @@ interface BookPageProps {
 }
 
 export async function generateMetadata({ params }: BookPageProps) {
-  const book = await prisma.book.findUnique({
-    where: { slug: params.slug },
-    select: { title: true, author: true, description: true },
-  });
+  try {
+    const book = await prisma.book.findUnique({
+      where: { slug: params.slug },
+      select: { title: true, author: true, description: true },
+    });
 
-  if (!book) return { title: "Book Not Found – BookVerse" };
+    if (book) {
+      return {
+        title: `${book.title} by ${book.author} – BookVerse Online Bookstore`,
+        description: book.description.slice(0, 160),
+      };
+    }
+  } catch {
+    // If DB is offline, check fallback
+  }
 
-  return {
-    title: `${book.title} by ${book.author} – BookVerse Online Bookstore`,
-    description: book.description.slice(0, 160),
-  };
+  const fallback = FALLBACK_BOOKS.find((b) => b.slug === params.slug);
+  if (fallback) {
+    return {
+      title: `${fallback.title} by ${fallback.author} – BookVerse Online Bookstore`,
+      description: fallback.description.slice(0, 160),
+    };
+  }
+
+  return { title: "Book – BookVerse Online Bookstore" };
 }
 
 export default async function BookDetailPage({ params }: BookPageProps) {
   const { slug } = params;
 
-  const book = await prisma.book.findUnique({
-    where: { slug },
-    include: {
-      category: true,
-      reviews: {
-        where: { isApproved: true },
-        include: {
-          user: { select: { name: true, avatar: true } },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+  let book: any = null;
+  let relatedBooks: any[] = [];
 
-  if (!book) {
-    notFound();
+  try {
+    book = await prisma.book.findUnique({
+      where: { slug },
+      include: {
+        category: true,
+        reviews: {
+          where: { isApproved: true },
+          include: {
+            user: { select: { name: true, avatar: true } },
+          },
+          orderBy: { createdAt: "desc" },
+        },
+      },
+    });
+
+    if (book) {
+      relatedBooks = await prisma.book.findMany({
+        where: {
+          categoryId: book.categoryId,
+          id: { not: book.id },
+        },
+        take: 4,
+        include: { category: true },
+      });
+    }
+  } catch (error) {
+    console.warn("DB notice on book page:", error);
   }
 
-  // Fetch related books in the same category
-  const relatedBooks = await prisma.book.findMany({
-    where: {
-      categoryId: book.categoryId,
-      id: { not: book.id },
-    },
-    take: 4,
-    include: { category: true },
-  });
+  // Fallback if not found in database or database connection is offline
+  if (!book) {
+    const fallback = FALLBACK_BOOKS.find((b) => b.slug === slug);
+    if (!fallback) {
+      notFound();
+    }
+
+    const fallbackRelated = FALLBACK_BOOKS.filter(
+      (b) => b.category?.slug === fallback.category?.slug && b.slug !== fallback.slug
+    ).slice(0, 4);
+
+    return (
+      <BookDetailClient
+        book={fallback}
+        reviews={[]}
+        relatedBooks={fallbackRelated.length > 0 ? fallbackRelated : FALLBACK_BOOKS.slice(0, 4)}
+      />
+    );
+  }
 
   const reviewCount = book.reviews.length;
   const avgRating =
     reviewCount > 0
-      ? Number((book.reviews.reduce((acc, r) => acc + r.rating, 0) / reviewCount).toFixed(1))
+      ? Number((book.reviews.reduce((acc: number, r: any) => acc + r.rating, 0) / reviewCount).toFixed(1))
       : 4.9;
 
   const discountPercent =
@@ -68,7 +107,7 @@ export default async function BookDetailPage({ params }: BookPageProps) {
       ? Math.round(((book.originalPrice - book.sellingPrice) / book.originalPrice) * 100)
       : 0;
 
-  const formattedReviews: Review[] = book.reviews.map((r) => ({
+  const formattedReviews: Review[] = book.reviews.map((r: any) => ({
     id: r.id,
     bookId: r.bookId,
     userId: r.userId,
